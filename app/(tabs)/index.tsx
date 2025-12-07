@@ -3,8 +3,18 @@ import TopBar from '@/components/TopBar';
 import EventModal from '@/components/calendar/EventModal';
 import { useApp } from '@/context/AppContext';
 import { Event } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
-import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Dimensions,
+  PanResponder,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const HOUR_HEIGHT = 60;
 const TIME_COLUMN_WIDTH = 50;
@@ -18,10 +28,38 @@ export default function CalendarScreen() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
+  // Swipe gesture handler
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dy) < 50;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx > 50) {
+          // Swipe right - go to previous day(s)
+          navigateDays(-1);
+        } else if (gestureState.dx < -50) {
+          // Swipe left - go to next day(s)
+          navigateDays(1);
+        }
+      },
+    })
+  ).current;
+
+  function navigateDays(direction: number) {
+    const viewType = data.settings.calendarViewType;
+    const daysToMove = viewType === 'day' ? 1 : viewType === '3day' ? 3 : 7;
+    setCurrentDate((prev) => {
+      const newDate = new Date(prev);
+      newDate.setDate(prev.getDate() + direction * daysToMove);
+      return newDate;
+    });
+  }
+
   // Process completed events on app open
   useEffect(() => {
     processCompletedEvents();
-    const interval = setInterval(processCompletedEvents, 60000); // Check every minute
+    const interval = setInterval(processCompletedEvents, 60000);
     return () => clearInterval(interval);
   }, [processCompletedEvents]);
 
@@ -36,7 +74,6 @@ export default function CalendarScreen() {
 
   const viewType = data.settings.calendarViewType;
   const days = getDaysToShow(currentDate, viewType);
-
   const currentTimePosition = getCurrentTimePosition();
 
   function getDaysToShow(date: Date, view: 'day' | '3day' | 'week'): Date[] {
@@ -75,7 +112,7 @@ export default function CalendarScreen() {
   const dayWidth = (SCREEN_WIDTH - TIME_COLUMN_WIDTH) / days.length;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <TopBar
         onMenuPress={() => setSidebarOpen(true)}
         currentDate={currentDate}
@@ -100,7 +137,11 @@ export default function CalendarScreen() {
         })}
       </View>
 
-      <ScrollView ref={scrollRef} style={styles.scrollView}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scrollView}
+        {...panResponder.panHandlers}
+      >
         <View style={styles.grid}>
           {/* Time column */}
           <View style={styles.timeColumn}>
@@ -137,28 +178,42 @@ export default function CalendarScreen() {
                   const [hours, mins] = event.time.split(':').map(Number);
                   const top = hours * HOUR_HEIGHT + (mins / 60) * HOUR_HEIGHT;
                   const height = (event.duration / 60) * HOUR_HEIGHT;
-                  const isCompleted = event.status === 'completed';
                   const isSkipped = event.status === 'skipped';
 
                   const member = data.members.find((m) => m.id === event.memberId);
                   const group = data.groups.find((g) => g.id === event.groupId);
+                  const eventName = event.type === 'person' ? member?.name : group?.name;
 
                   return (
                     <TouchableOpacity
                       key={event.id}
                       style={[
                         styles.event,
-                        { top, height: Math.max(height, 25) },
+                        { top, height: Math.max(height, 30) },
                         isSkipped && styles.skippedEvent,
+                        event.type === 'group' && styles.groupEvent,
                       ]}
                       onPress={() => setSelectedEvent(event)}
                     >
-                      <Text
-                        style={[styles.eventText, isSkipped && styles.skippedText]}
-                        numberOfLines={1}
-                      >
-                        {event.type === 'person' ? member?.name : group?.name}
-                      </Text>
+                      <View style={styles.eventContent}>
+                        <Ionicons
+                          name={event.type === 'person' ? 'person' : 'people'}
+                          size={12}
+                          color={isSkipped ? '#888' : '#fff'}
+                          style={styles.eventIcon}
+                        />
+                        <Text
+                          style={[styles.eventText, isSkipped && styles.skippedText]}
+                          numberOfLines={1}
+                        >
+                          {eventName || 'Unnamed'}
+                        </Text>
+                      </View>
+                      {height >= 40 && (
+                        <Text style={[styles.eventTime, isSkipped && styles.skippedText]}>
+                          {event.time}
+                        </Text>
+                      )}
                     </TouchableOpacity>
                   );
                 })}
@@ -189,7 +244,7 @@ export default function CalendarScreen() {
           }}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -265,17 +320,33 @@ const styles = StyleSheet.create({
     left: 2,
     right: 2,
     backgroundColor: '#4f46e5',
-    borderRadius: 4,
-    padding: 4,
+    borderRadius: 6,
+    padding: 6,
     overflow: 'hidden',
+  },
+  groupEvent: {
+    backgroundColor: '#22c55e',
   },
   skippedEvent: {
     backgroundColor: '#333',
   },
+  eventContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  eventIcon: {
+    marginRight: 4,
+  },
   eventText: {
     fontSize: 11,
     color: '#fff',
-    fontWeight: '500',
+    fontWeight: '600',
+    flex: 1,
+  },
+  eventTime: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
   },
   skippedText: {
     textDecorationLine: 'line-through',

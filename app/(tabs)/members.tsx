@@ -13,6 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function MembersScreen() {
     const { data, addMember, deleteMember } = useApp();
@@ -102,7 +103,7 @@ export default function MembersScreen() {
     );
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
             <View style={styles.header}>
                 <Text style={styles.title}>Members</Text>
                 <TouchableOpacity
@@ -195,7 +196,7 @@ export default function MembersScreen() {
                     </View>
                 </View>
             )}
-        </View>
+        </SafeAreaView>
     );
 }
 

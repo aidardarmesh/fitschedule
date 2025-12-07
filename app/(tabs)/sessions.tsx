@@ -3,6 +3,7 @@ import { Member } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Alert, FlatList, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SessionsScreen() {
     const { data } = useApp();
@@ -59,7 +60,7 @@ export default function SessionsScreen() {
     );
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
             <View style={styles.header}>
                 <Text style={styles.title}>Sessions Left</Text>
             </View>
@@ -73,7 +74,7 @@ export default function SessionsScreen() {
                     <Text style={styles.emptyText}>No members yet.</Text>
                 }
             />
-        </View>
+        </SafeAreaView>
     );
 }
 
