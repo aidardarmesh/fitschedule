@@ -2,9 +2,13 @@ import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { LogBox } from 'react-native';
+import { ReduceMotion, ReducedMotionConfig } from 'react-native-reanimated';
 
 import { AppProvider, useApp } from '@/context/AppContext';
+
+// Suppress the reduced motion warning in development
+LogBox.ignoreLogs(['[Reanimated] Reduced motion setting is enabled on this device.']);
 
 function RootLayoutNav() {
   const { data, isLoading } = useApp();
@@ -43,6 +47,8 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <AppProvider>
+      {/* Override device's reduced motion setting to ensure smooth animations */}
+      <ReducedMotionConfig mode={ReduceMotion.Never} />
       <RootLayoutNav />
     </AppProvider>
   );
