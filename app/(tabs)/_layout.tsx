@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 
@@ -35,7 +35,7 @@ export default function TabLayout() {
         name="sessions"
         options={{
           title: 'Sessions',
-          tabBarIcon: ({ color, size }) => <Ionicons name="fitness" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="run" size={size} color={color} />,
         }}
       />
     </Tabs>
