@@ -34,7 +34,7 @@ export default function EventModal({ date, time, event, onClose }: EventModalPro
     const [groupName, setGroupName] = useState('');
     const [groupColor, setGroupColor] = useState(COLORS[0]);
     const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
-    const [sessionsTotal, setSessionsTotal] = useState('1');
+    const [sessionsTotal, setSessionsTotal] = useState('12');
     const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([new Date(date).getDay()]);
     const [startDate, setStartDate] = useState(date);
     const [eventTime, setEventTime] = useState(time);
@@ -175,6 +175,7 @@ export default function EventModal({ date, time, event, onClose }: EventModalPro
 
                 <ScrollView
                     style={styles.content}
+                    contentContainerStyle={{ paddingBottom: 150 }}
                     keyboardDismissMode="on-drag"
                     keyboardShouldPersistTaps="handled"
                 >
