@@ -1,7 +1,7 @@
 import { useApp } from '@/context/AppContext';
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { Linking, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Linking, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -10,10 +10,55 @@ interface SidebarProps {
 
 const APP_VERSION = '1.0.0';
 const AUTHOR = 'FitSchedule Team';
+const SIDEBAR_WIDTH = 280;
+const ANIMATION_DURATION = 300;
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     const { data, updateSettings } = useApp();
     const { calendarViewType } = data.settings;
+
+    const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
+    const overlayAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (isOpen) {
+            // Animate in: slide from left, fade in overlay
+            Animated.parallel([
+                Animated.timing(slideAnim, {
+                    toValue: 0,
+                    duration: ANIMATION_DURATION,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(overlayAnim, {
+                    toValue: 1,
+                    duration: ANIMATION_DURATION,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        } else {
+            // Reset to initial state
+            slideAnim.setValue(-SIDEBAR_WIDTH);
+            overlayAnim.setValue(0);
+        }
+    }, [isOpen]);
+
+    const handleClose = () => {
+        // Animate out: slide to left, fade out overlay
+        Animated.parallel([
+            Animated.timing(slideAnim, {
+                toValue: -SIDEBAR_WIDTH,
+                duration: ANIMATION_DURATION,
+                useNativeDriver: true,
+            }),
+            Animated.timing(overlayAnim, {
+                toValue: 0,
+                duration: ANIMATION_DURATION,
+                useNativeDriver: true,
+            }),
+        ]).start(() => {
+            onClose();
+        });
+    };
 
     if (!isOpen) return null;
 
@@ -32,14 +77,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             visible={isOpen}
             transparent
             animationType="none"
-            onRequestClose={onClose}
+            onRequestClose={handleClose}
         >
             <View style={styles.modalContainer}>
-                <TouchableOpacity style={styles.overlay} onPress={onClose} activeOpacity={1} />
-                <View style={styles.sidebar}>
+                <Animated.View style={[styles.overlay, { opacity: overlayAnim }]}>
+                    <TouchableOpacity style={StyleSheet.absoluteFill} onPress={handleClose} activeOpacity={1} />
+                </Animated.View>
+                <Animated.View style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}>
                     <View style={styles.header}>
                         <Text style={styles.headerTitle}>Settings</Text>
-                        <TouchableOpacity onPress={onClose}>
+                        <TouchableOpacity onPress={handleClose}>
                             <Ionicons name="close" size={24} color="#fff" />
                         </TouchableOpacity>
                     </View>
@@ -81,7 +128,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                         <Text style={styles.footerText}>Version {APP_VERSION}</Text>
                         <Text style={styles.footerText}>{AUTHOR}</Text>
                     </View>
-                </View>
+                </Animated.View>
             </View>
         </Modal>
     );
