@@ -1,9 +1,11 @@
 import { useApp } from '@/context/AppContext';
 import { Event } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
+    Animated,
+    Dimensions,
     ScrollView,
     StyleSheet,
     Text,
@@ -11,6 +13,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface EventModalProps {
     date: string;
@@ -36,8 +40,47 @@ export default function EventModal({ date, time, event, onClose }: EventModalPro
     const [eventTime, setEventTime] = useState(time);
     const [duration, setDuration] = useState('60');
     const [notes, setNotes] = useState(event?.notes || '');
+    const [isClosing, setIsClosing] = useState(false);
+
+    const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+    const overlayOpacity = useRef(new Animated.Value(0)).current;
 
     const isEditing = !!event;
+
+    // Slide up animation on mount
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(slideAnim, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: true,
+            }),
+            Animated.timing(overlayOpacity, {
+                toValue: 1,
+                duration: 300,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, [slideAnim, overlayOpacity]);
+
+    // Handle close with animation
+    const handleClose = () => {
+        setIsClosing(true);
+        Animated.parallel([
+            Animated.timing(slideAnim, {
+                toValue: SCREEN_HEIGHT,
+                duration: 300,
+                useNativeDriver: true,
+            }),
+            Animated.timing(overlayOpacity, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: true,
+            }),
+        ]).start(() => {
+            onClose();
+        });
+    };
 
     const toggleWeekday = (day: number) => {
         setSelectedWeekdays((prev) =>
@@ -108,7 +151,7 @@ export default function EventModal({ date, time, event, onClose }: EventModalPro
         if (event) {
             Alert.alert('Delete Event', 'Are you sure?', [
                 { text: 'Cancel' },
-                { text: 'Delete', style: 'destructive', onPress: () => { deleteEvent(event.id); onClose(); } },
+                { text: 'Delete', style: 'destructive', onPress: () => { deleteEvent(event.id); handleClose(); } },
             ]);
         }
     };
@@ -116,16 +159,16 @@ export default function EventModal({ date, time, event, onClose }: EventModalPro
     const handleSkip = () => {
         if (event) {
             markEventSkipped(event.id);
-            onClose();
+            handleClose();
         }
     };
 
     return (
-        <View style={styles.overlay}>
-            <View style={styles.modal}>
+        <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]}>
+            <Animated.View style={[styles.modal, { transform: [{ translateY: slideAnim }] }]}>
                 <View style={styles.header}>
                     <Text style={styles.title}>{isEditing ? 'Edit Event' : 'New Event'}</Text>
-                    <TouchableOpacity onPress={onClose}>
+                    <TouchableOpacity onPress={handleClose}>
                         <Ionicons name="close" size={24} color="#888" />
                     </TouchableOpacity>
                 </View>
@@ -286,8 +329,8 @@ export default function EventModal({ date, time, event, onClose }: EventModalPro
                         <Text style={styles.saveText}>{isEditing ? 'Update' : 'Create'}</Text>
                     </TouchableOpacity>
                 </View>
-            </View>
-        </View>
+            </Animated.View>
+        </Animated.View>
     );
 }
 
