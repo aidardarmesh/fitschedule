@@ -1,7 +1,7 @@
 import { useApp } from '@/context/AppContext';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -28,67 +28,72 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     };
 
     return (
-        <>
-            <TouchableOpacity style={styles.overlay} onPress={onClose} activeOpacity={1} />
-            <View style={styles.sidebar}>
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Settings</Text>
-                    <TouchableOpacity onPress={onClose}>
-                        <Ionicons name="close" size={24} color="#fff" />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Calendar View</Text>
-                    {viewOptions.map((option) => (
-                        <TouchableOpacity
-                            key={option.key}
-                            style={[
-                                styles.optionRow,
-                                calendarViewType === option.key && styles.optionRowActive,
-                            ]}
-                            onPress={() => updateSettings({ calendarViewType: option.key })}
-                        >
-                            <Text
-                                style={[
-                                    styles.optionText,
-                                    calendarViewType === option.key && styles.optionTextActive,
-                                ]}
-                            >
-                                {option.label}
-                            </Text>
-                            {calendarViewType === option.key && (
-                                <Ionicons name="checkmark" size={20} color="#4f46e5" />
-                            )}
+        <Modal
+            visible={isOpen}
+            transparent
+            animationType="none"
+            onRequestClose={onClose}
+        >
+            <View style={styles.modalContainer}>
+                <TouchableOpacity style={styles.overlay} onPress={onClose} activeOpacity={1} />
+                <View style={styles.sidebar}>
+                    <View style={styles.header}>
+                        <Text style={styles.headerTitle}>Settings</Text>
+                        <TouchableOpacity onPress={onClose}>
+                            <Ionicons name="close" size={24} color="#fff" />
                         </TouchableOpacity>
-                    ))}
-                </View>
+                    </View>
 
-                <View style={styles.section}>
-                    <TouchableOpacity style={styles.optionRow} onPress={handleFeedback}>
-                        <Ionicons name="mail-outline" size={20} color="#888" />
-                        <Text style={styles.optionText}>Send Feedback</Text>
-                    </TouchableOpacity>
-                </View>
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Calendar View</Text>
+                        {viewOptions.map((option) => (
+                            <TouchableOpacity
+                                key={option.key}
+                                style={[
+                                    styles.optionRow,
+                                    calendarViewType === option.key && styles.optionRowActive,
+                                ]}
+                                onPress={() => updateSettings({ calendarViewType: option.key })}
+                            >
+                                <Text
+                                    style={[
+                                        styles.optionText,
+                                        calendarViewType === option.key && styles.optionTextActive,
+                                    ]}
+                                >
+                                    {option.label}
+                                </Text>
+                                {calendarViewType === option.key && (
+                                    <Ionicons name="checkmark" size={20} color="#4f46e5" />
+                                )}
+                            </TouchableOpacity>
+                        ))}
+                    </View>
 
-                <View style={styles.footer}>
-                    <Text style={styles.footerText}>Version {APP_VERSION}</Text>
-                    <Text style={styles.footerText}>{AUTHOR}</Text>
+                    <View style={styles.section}>
+                        <TouchableOpacity style={styles.optionRow} onPress={handleFeedback}>
+                            <Ionicons name="mail-outline" size={20} color="#888" />
+                            <Text style={styles.optionText}>Send Feedback</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.footer}>
+                        <Text style={styles.footerText}>Version {APP_VERSION}</Text>
+                        <Text style={styles.footerText}>{AUTHOR}</Text>
+                    </View>
                 </View>
             </View>
-        </>
+        </Modal>
     );
 }
 
 const styles = StyleSheet.create({
+    modalContainer: {
+        flex: 1,
+    },
     overlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0,0,0,0.5)',
-        zIndex: 100,
     },
     sidebar: {
         position: 'absolute',
@@ -97,7 +102,6 @@ const styles = StyleSheet.create({
         bottom: 0,
         width: 280,
         backgroundColor: '#111',
-        zIndex: 101,
         paddingTop: 60,
     },
     header: {
