@@ -1,17 +1,19 @@
 import { useApp } from '@/context/AppContext';
 import { Event } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Animated,
     Dimensions,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -41,6 +43,7 @@ export default function EventModal({ date, time, event, onClose }: EventModalPro
     const [duration, setDuration] = useState('60');
     const [notes, setNotes] = useState(event?.notes || '');
     const [isClosing, setIsClosing] = useState(false);
+    const [showTimePicker, setShowTimePicker] = useState(false);
 
     const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
     const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -161,6 +164,23 @@ export default function EventModal({ date, time, event, onClose }: EventModalPro
             markEventSkipped(event.id);
             handleClose();
         }
+    };
+
+    const handleTimeChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+        setShowTimePicker(Platform.OS === 'ios');
+        if (selectedDate) {
+            const hours = selectedDate.getHours().toString().padStart(2, '0');
+            const minutes = selectedDate.getMinutes().toString().padStart(2, '0');
+            setEventTime(`${hours}:${minutes}`);
+        }
+    };
+
+    // Convert eventTime string to Date for the picker
+    const getTimeAsDate = () => {
+        const [hours, minutes] = eventTime.split(':').map(Number);
+        const date = new Date();
+        date.setHours(hours || 0, minutes || 0, 0, 0);
+        return date;
     };
 
     return (
@@ -289,13 +309,21 @@ export default function EventModal({ date, time, event, onClose }: EventModalPro
                     <View style={styles.row}>
                         <View style={styles.halfInput}>
                             <Text style={styles.label}>Time</Text>
-                            <TextInput
+                            <TouchableOpacity
                                 style={styles.input}
-                                value={eventTime}
-                                onChangeText={setEventTime}
-                                placeholder="HH:MM"
-                                placeholderTextColor="#666"
-                            />
+                                onPress={() => setShowTimePicker(true)}
+                            >
+                                <Text style={styles.timeText}>{eventTime || 'HH:MM'}</Text>
+                            </TouchableOpacity>
+                            {showTimePicker && (
+                                <DateTimePicker
+                                    value={getTimeAsDate()}
+                                    mode="time"
+                                    is24Hour={true}
+                                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                    onChange={handleTimeChange}
+                                />
+                            )}
                         </View>
                         <View style={styles.halfInput}>
                             <Text style={styles.label}>Duration (min)</Text>
@@ -408,6 +436,10 @@ const styles = StyleSheet.create({
         backgroundColor: '#1a1a1a',
         borderRadius: 8,
         padding: 14,
+        fontSize: 16,
+        color: '#fff',
+    },
+    timeText: {
         fontSize: 16,
         color: '#fff',
     },
