@@ -173,7 +173,11 @@ export default function EventModal({ date, time, event, onClose }: EventModalPro
                     </TouchableOpacity>
                 </View>
 
-                <ScrollView style={styles.content}>
+                <ScrollView
+                    style={styles.content}
+                    keyboardDismissMode="on-drag"
+                    keyboardShouldPersistTaps="handled"
+                >
                     {/* Event Type Toggle */}
                     {!isEditing && (
                         <View style={styles.typeToggle}>
