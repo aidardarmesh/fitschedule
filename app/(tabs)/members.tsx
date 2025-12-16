@@ -144,12 +144,14 @@ export default function MembersScreen() {
                                     <Ionicons name="create-outline" size={24} color="#4f46e5" />
                                     <Text style={styles.modalOptionText}>Add Manually</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.cancelBtn}
-                                    onPress={() => setShowAddModal(false)}
-                                >
-                                    <Text style={styles.cancelText}>Cancel</Text>
-                                </TouchableOpacity>
+                                <View style={styles.modalActions}>
+                                    <TouchableOpacity
+                                        style={styles.cancelBtn}
+                                        onPress={() => setShowAddModal(false)}
+                                    >
+                                        <Text style={styles.cancelText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </>
                         ) : (
                             <>
@@ -321,10 +323,13 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: 14,
         alignItems: 'center',
+        backgroundColor: '#333',
+        borderRadius: 8,
     },
     cancelText: {
-        color: '#888',
+        color: '#fff',
         fontSize: 16,
+        fontWeight: '600',
     },
     saveBtn: {
         flex: 1,
