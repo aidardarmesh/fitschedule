@@ -32,6 +32,29 @@ interface AppContextType {
     // Series
     createSeries: (series: Omit<Series, 'id'>) => void;
 
+    // Group creation helpers (persist group + schedule in a single state update)
+    createGroupEvent: (payload: {
+        name: string;
+        color: string;
+        memberIds: string[];
+        sessionsTotal: number;
+        date: string;
+        time: string;
+        duration: number;
+        notes?: string;
+    }) => void;
+    createGroupSeries: (payload: {
+        name: string;
+        color: string;
+        memberIds: string[];
+        sessionsTotal: number;
+        weekdays: number[];
+        startDate: string;
+        time: string;
+        duration: number;
+        notes?: string;
+    }) => void;
+
     // Session management
     processCompletedEvents: () => void;
 }
@@ -187,6 +210,107 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
     }, [data, persistData]);
 
+    const createGroupEvent = useCallback((payload: {
+        name: string;
+        color: string;
+        memberIds: string[];
+        sessionsTotal: number;
+        date: string;
+        time: string;
+        duration: number;
+        notes?: string;
+    }) => {
+        const groupId = generateId();
+        const newGroup: GroupSession = {
+            id: groupId,
+            name: payload.name,
+            color: payload.color,
+            memberIds: payload.memberIds,
+            sessionsTotal: payload.sessionsTotal,
+        };
+
+        const newEvent: Event = {
+            id: generateId(),
+            type: 'group',
+            groupId,
+            date: payload.date,
+            time: payload.time,
+            duration: payload.duration,
+            notes: payload.notes,
+            status: 'scheduled',
+        };
+
+        persistData({
+            ...data,
+            groups: [...data.groups, newGroup],
+            events: [...data.events, newEvent],
+        });
+    }, [data, persistData]);
+
+    const createGroupSeries = useCallback((payload: {
+        name: string;
+        color: string;
+        memberIds: string[];
+        sessionsTotal: number;
+        weekdays: number[];
+        startDate: string;
+        time: string;
+        duration: number;
+        notes?: string;
+    }) => {
+        const groupId = generateId();
+        const newGroup: GroupSession = {
+            id: groupId,
+            name: payload.name,
+            color: payload.color,
+            memberIds: payload.memberIds,
+            sessionsTotal: payload.sessionsTotal,
+        };
+
+        const newSeries: Series = {
+            id: generateId(),
+            type: 'group',
+            groupId,
+            weekdays: payload.weekdays,
+            startDate: payload.startDate,
+            time: payload.time,
+            duration: payload.duration,
+            sessionsTotal: payload.sessionsTotal,
+            notes: payload.notes,
+        };
+
+        const events: Event[] = [];
+        const startDate = new Date(payload.startDate);
+        let eventsCreated = 0;
+        let currentDate = new Date(startDate);
+
+        while (eventsCreated < payload.sessionsTotal) {
+            const dayOfWeek = currentDate.getDay();
+            if (payload.weekdays.includes(dayOfWeek)) {
+                events.push({
+                    id: generateId(),
+                    type: 'group',
+                    groupId,
+                    date: currentDate.toISOString().split('T')[0],
+                    time: payload.time,
+                    duration: payload.duration,
+                    notes: payload.notes,
+                    status: 'scheduled',
+                    seriesId: newSeries.id,
+                });
+                eventsCreated++;
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        persistData({
+            ...data,
+            groups: [...data.groups, newGroup],
+            series: [...data.series, newSeries],
+            events: [...data.events, ...events],
+        });
+    }, [data, persistData]);
+
     const processCompletedEvents = useCallback(() => {
         const now = new Date();
         const updatedEvents = data.events.map((event) => {
@@ -245,6 +369,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 markEventCompleted,
                 markEventSkipped,
                 createSeries,
+                createGroupEvent,
+                createGroupSeries,
                 processCompletedEvents,
             }}
         >

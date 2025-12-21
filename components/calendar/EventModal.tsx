@@ -29,7 +29,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const COLORS = ['#4f46e5', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 export default function EventModal({ date, time, event, onClose }: EventModalProps) {
-    const { data, addEvent, updateEvent, deleteEvent, createSeries, markEventSkipped } = useApp();
+    const { data, addEvent, updateEvent, deleteEvent, createSeries, createGroupEvent, createGroupSeries, markEventSkipped } = useApp();
 
     const [eventType, setEventType] = useState<'person' | 'group'>(event?.type || 'person');
     const [selectedMemberId, setSelectedMemberId] = useState(event?.memberId || '');
@@ -135,16 +135,35 @@ export default function EventModal({ date, time, event, onClose }: EventModalPro
                 return;
             }
 
-            // For groups, we'd need to add group first, then create events
-            // Simplified: create single event for now
-            addEvent({
-                type: 'group',
-                date: startDate,
-                time: eventTime,
-                duration: durationNum,
-                notes,
-                status: 'scheduled',
-            });
+            if (selectedMemberIds.length === 0) {
+                Alert.alert('Error', 'Please select at least one member');
+                return;
+            }
+
+            if (sessionsNum === 1) {
+                createGroupEvent({
+                    name: groupName.trim(),
+                    color: groupColor,
+                    memberIds: selectedMemberIds,
+                    sessionsTotal: sessionsNum,
+                    date: startDate,
+                    time: eventTime,
+                    duration: durationNum,
+                    notes,
+                });
+            } else {
+                createGroupSeries({
+                    name: groupName.trim(),
+                    color: groupColor,
+                    memberIds: selectedMemberIds,
+                    sessionsTotal: sessionsNum,
+                    weekdays: selectedWeekdays,
+                    startDate,
+                    time: eventTime,
+                    duration: durationNum,
+                    notes,
+                });
+            }
         }
 
         onClose();
