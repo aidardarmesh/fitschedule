@@ -321,6 +321,8 @@ export default function EventModal({ date, time, event, onClose }: EventModalPro
                                     mode="time"
                                     is24Hour={true}
                                     display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                    themeVariant={Platform.OS === 'ios' ? 'dark' : undefined}
+                                    textColor={Platform.OS === 'ios' ? '#fff' : undefined}
                                     onChange={handleTimeChange}
                                 />
                             )}
