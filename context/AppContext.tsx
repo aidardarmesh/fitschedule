@@ -14,6 +14,7 @@ interface AppContextType {
 
     // Members
     addMember: (member: Omit<Member, 'id' | 'createdAt'>) => void;
+    addMembers: (members: Omit<Member, 'id' | 'createdAt'>[]) => void;
     updateMember: (id: string, updates: Partial<Member>) => void;
     deleteMember: (id: string) => void;
 
@@ -100,6 +101,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             createdAt: new Date().toISOString(),
         };
         persistData({ ...data, members: [...data.members, newMember] });
+    }, [data, persistData]);
+
+    const addMembers = useCallback((members: Omit<Member, 'id' | 'createdAt'>[]) => {
+        const newMembers: Member[] = members.map((member) => ({
+            id: generateId(),
+            name: member.name,
+            whatsapp: member.whatsapp,
+            createdAt: new Date().toISOString(),
+        }));
+        persistData({ ...data, members: [...data.members, ...newMembers] });
     }, [data, persistData]);
 
     const updateMember = useCallback((id: string, updates: Partial<Member>) => {
@@ -363,6 +374,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 updateProfile,
                 updateSettings,
                 addMember,
+                addMembers,
                 updateMember,
                 deleteMember,
                 addGroup,

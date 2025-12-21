@@ -1,3 +1,5 @@
+import ContactPicker, { ContactPickerItem } from '@/components/ContactPicker';
+import PhoneEntryModal from '@/components/PhoneEntryModal';
 import { useApp } from '@/context/AppContext';
 import { Member } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,32 +17,126 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function MembersScreen() {
-    const { data, addMember, updateMember, deleteMember } = useApp();
+    const { data, addMember, addMembers, updateMember, deleteMember } = useApp();
     const [showAddModal, setShowAddModal] = useState(false);
     const [addMode, setAddMode] = useState<'manual' | 'contacts' | null>(null);
     const [name, setName] = useState('');
     const [whatsapp, setWhatsapp] = useState('');
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingMember, setEditingMember] = useState<Member | null>(null);
+    
+    // Contact import state
+    const [showContactPicker, setShowContactPicker] = useState(false);
+    const [showPhoneEntry, setShowPhoneEntry] = useState(false);
+    const [pendingContacts, setPendingContacts] = useState<ContactPickerItem[]>([]);
+    const [currentContactIndex, setCurrentContactIndex] = useState(0);
+    const [importedMembers, setImportedMembers] = useState<Omit<Member, 'id' | 'createdAt'>[]>([]);
 
     const handleAddFromContacts = async () => {
         const { status } = await Contacts.requestPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission Denied', 'Please allow contacts access in settings.');
+            Alert.alert(
+                'Permission Denied',
+                'Please allow contacts access in settings to import contacts.',
+                [{ text: 'OK' }]
+            );
             return;
         }
 
-        const { data: contacts } = await Contacts.getContactsAsync({
-            fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
-        });
+        setShowAddModal(false);
+        setShowContactPicker(true);
+    };
 
-        if (contacts.length > 0) {
-            Alert.alert(
-                'Select Contact',
-                'This would show a contact picker. For now, add manually.',
-                [{ text: 'OK', onPress: () => setAddMode('manual') }]
-            );
+    const handleContactsSelected = (selectedContacts: ContactPickerItem[]) => {
+        setShowContactPicker(false);
+        
+        if (selectedContacts.length === 0) {
+            return;
         }
+
+        // Reset imported members array and start processing
+        setImportedMembers([]);
+        setPendingContacts(selectedContacts);
+        setCurrentContactIndex(0);
+        processNextContact(selectedContacts, 0, []);
+    };
+
+    const processNextContact = (contacts: ContactPickerItem[], index: number, accumulated: Omit<Member, 'id' | 'createdAt'>[]) => {
+        if (index >= contacts.length) {
+            // All contacts processed - now import them all at once
+            if (accumulated.length > 0) {
+                addMembers(accumulated);
+                Alert.alert(
+                    'Import Complete',
+                    `Successfully imported ${accumulated.length} contact${accumulated.length !== 1 ? 's' : ''}.`,
+                    [{ text: 'OK' }]
+                );
+            }
+            setPendingContacts([]);
+            setCurrentContactIndex(0);
+            setImportedMembers([]);
+            return;
+        }
+
+        const contact = contacts[index];
+        
+        if (contact.phoneNumber) {
+            // Has phone number, add to accumulated array
+            const newAccumulated = [
+                ...accumulated,
+                {
+                    name: contact.name,
+                    whatsapp: contact.phoneNumber,
+                }
+            ];
+            setImportedMembers(newAccumulated);
+            // Process next contact
+            processNextContact(contacts, index + 1, newAccumulated);
+        } else {
+            // No phone number, show entry modal
+            setCurrentContactIndex(index);
+            setImportedMembers(accumulated);
+            setShowPhoneEntry(true);
+        }
+    };
+
+    const handlePhoneSave = (phoneNumber: string) => {
+        const contact = pendingContacts[currentContactIndex];
+        setShowPhoneEntry(false);
+        
+        // Add to accumulated members
+        const newAccumulated = [
+            ...importedMembers,
+            {
+                name: contact.name,
+                whatsapp: phoneNumber,
+            }
+        ];
+        
+        // Process next contact with updated accumulated array
+        processNextContact(pendingContacts, currentContactIndex + 1, newAccumulated);
+    };
+
+    const handlePhoneSkip = () => {
+        setShowPhoneEntry(false);
+        
+        // Skip this contact and process next with current accumulated array
+        processNextContact(pendingContacts, currentContactIndex + 1, importedMembers);
+    };
+
+    const handlePhoneEntryClose = () => {
+        setShowPhoneEntry(false);
+        
+        // Cancel the entire import process
+        Alert.alert(
+            'Import Cancelled',
+            'Contact import has been cancelled.',
+            [{ text: 'OK' }]
+        );
+        
+        setPendingContacts([]);
+        setCurrentContactIndex(0);
+        setImportedMembers([]);
     };
 
     const handleSave = () => {
@@ -243,6 +339,20 @@ export default function MembersScreen() {
                     </View>
                 </View>
             )}
+
+            <ContactPicker
+                visible={showContactPicker}
+                onClose={() => setShowContactPicker(false)}
+                onSelect={handleContactsSelected}
+            />
+
+            <PhoneEntryModal
+                visible={showPhoneEntry}
+                contactName={pendingContacts[currentContactIndex]?.name || ''}
+                onSave={handlePhoneSave}
+                onSkip={handlePhoneSkip}
+                onClose={handlePhoneEntryClose}
+            />
         </SafeAreaView>
     );
 }
