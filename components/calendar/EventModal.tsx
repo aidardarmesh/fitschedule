@@ -101,6 +101,18 @@ export default function EventModal({ date, time, event, onClose }: EventModalPro
         const sessionsNum = parseInt(sessionsTotal) || 1;
         const durationNum = parseInt(duration) || 60;
 
+        // If editing an existing event, update it
+        if (isEditing && event) {
+            updateEvent(event.id, {
+                time: eventTime,
+                duration: durationNum,
+                notes,
+            });
+            onClose();
+            return;
+        }
+
+        // Otherwise, create a new event/series
         if (eventType === 'person') {
             if (!selectedMemberId) {
                 Alert.alert('Error', 'Please select a member');
