@@ -29,7 +29,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const COLORS = ['#4f46e5', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 export default function EventModal({ date, time, event, onClose }: EventModalProps) {
-    const { data, addEvent, updateEvent, deleteEvent, createSeries, createGroupEvent, createGroupSeries, markEventSkipped } = useApp();
+    const { data, addEvent, updateEvent, deleteEvent, createSeries, createGroupEvent, createGroupSeries } = useApp();
 
     // Get group data if editing a group event
     const existingGroup = event?.groupId ? data.groups.find(g => g.id === event.groupId) : null;
@@ -190,13 +190,6 @@ export default function EventModal({ date, time, event, onClose }: EventModalPro
                 { text: 'Cancel' },
                 { text: 'Delete', style: 'destructive', onPress: () => { deleteEvent(event.id); handleClose(); } },
             ]);
-        }
-    };
-
-    const handleSkip = () => {
-        if (event) {
-            markEventSkipped(event.id);
-            handleClose();
         }
     };
 
@@ -385,14 +378,9 @@ export default function EventModal({ date, time, event, onClose }: EventModalPro
 
                 <View style={styles.actions}>
                     {isEditing && (
-                        <>
-                            <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
-                                <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
-                                <Text style={styles.skipText}>Skip</Text>
-                            </TouchableOpacity>
-                        </>
+                        <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
+                            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                        </TouchableOpacity>
                     )}
                     <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
                         <Text style={styles.saveText}>{isEditing ? 'Update' : 'Create'}</Text>
@@ -560,18 +548,6 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    skipBtn: {
-        paddingHorizontal: 20,
-        height: 48,
-        backgroundColor: '#1a1a1a',
-        borderRadius: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    skipText: {
-        color: '#888',
-        fontSize: 14,
     },
     saveBtn: {
         flex: 1,
