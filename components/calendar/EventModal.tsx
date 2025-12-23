@@ -31,16 +31,19 @@ const COLORS = ['#4f46e5', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'
 export default function EventModal({ date, time, event, onClose }: EventModalProps) {
     const { data, addEvent, updateEvent, deleteEvent, createSeries, createGroupEvent, createGroupSeries, markEventSkipped } = useApp();
 
+    // Get group data if editing a group event
+    const existingGroup = event?.groupId ? data.groups.find(g => g.id === event.groupId) : null;
+
     const [eventType, setEventType] = useState<'person' | 'group'>(event?.type || 'person');
     const [selectedMemberId, setSelectedMemberId] = useState(event?.memberId || '');
-    const [groupName, setGroupName] = useState('');
-    const [groupColor, setGroupColor] = useState(COLORS[0]);
-    const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+    const [groupName, setGroupName] = useState(existingGroup?.name || '');
+    const [groupColor, setGroupColor] = useState(existingGroup?.color || COLORS[0]);
+    const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(existingGroup?.memberIds || []);
     const [sessionsTotal, setSessionsTotal] = useState('12');
     const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([new Date(date).getDay()]);
     const [startDate, setStartDate] = useState(date);
     const [eventTime, setEventTime] = useState(time);
-    const [duration, setDuration] = useState('60');
+    const [duration, setDuration] = useState(event?.duration.toString() || '60');
     const [notes, setNotes] = useState(event?.notes || '');
     const [isClosing, setIsClosing] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
