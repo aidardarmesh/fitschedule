@@ -1,4 +1,4 @@
-import { AppData, AppSettings, Event, GroupSession, Member, Series, UserProfile } from '@/types';
+import { AppData, AppSettings, Event, GroupSession, Member, Series, Session, UserProfile } from '@/types';
 import { generateId, loadAppData, saveAppData } from '@/utils/storage';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
@@ -17,6 +17,11 @@ interface AppContextType {
     addMembers: (members: Omit<Member, 'id' | 'createdAt'>[]) => void;
     updateMember: (id: string, updates: Partial<Member>) => void;
     deleteMember: (id: string) => void;
+
+    // Sessions
+    addSession: (session: Omit<Session, 'id' | 'createdAt'>) => void;
+    updateSession: (id: string, updates: Partial<Session>) => void;
+    deleteSession: (id: string) => void;
 
     // Groups
     addGroup: (group: Omit<GroupSession, 'id'>) => void;
@@ -70,6 +75,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         groups: [],
         events: [],
         series: [],
+        sessions: [],
     });
     const [isLoading, setIsLoading] = useState(true);
 
@@ -130,6 +136,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Remove all series associated with this member
         const updatedSeries = data.series.filter((s) => s.memberId !== id);
         
+        // Remove all sessions associated with this member
+        const updatedSessions = data.sessions.filter((s) => s.memberId !== id);
+        
         // Remove member from all groups and clean up orphaned groups
         const updatedGroups = data.groups
             .map((g) => ({
@@ -155,6 +164,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             events: finalEvents,
             series: finalSeries,
             groups: updatedGroups,
+            sessions: updatedSessions,
         });
     }, [data, persistData]);
 
@@ -194,12 +204,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const event = data.events.find((e) => e.id === id);
         if (!event || event.status === 'completed') return;
 
-        // TODO: Session tracking will be reimplemented in the sessions tab refactor
-        // Members no longer track sessionsRemaining directly
+        // Get member IDs associated with this event
+        let memberIds: string[] = [];
+        if (event.type === 'person' && event.memberId) {
+            memberIds = [event.memberId];
+        } else if (event.type === 'group' && event.groupId) {
+            const group = data.groups.find((g) => g.id === event.groupId);
+            if (group) {
+                memberIds = group.memberIds;
+            }
+        }
+
+        // Deduct 1 from remaining sessions for all associated members
+        const updatedSessions = data.sessions.map((session) => {
+            if (memberIds.includes(session.memberId) && session.remaining > 0) {
+                return { ...session, remaining: session.remaining - 1 };
+            }
+            return session;
+        });
         
         persistData({
             ...data,
             events: data.events.map((e) => (e.id === id ? { ...e, status: 'completed' } : e)),
+            sessions: updatedSessions,
         });
     }, [data, persistData]);
 
@@ -346,6 +373,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const processCompletedEvents = useCallback(() => {
         const now = new Date();
+        const completedEventIds: string[] = [];
+        
         const updatedEvents = data.events.map((event) => {
             if (event.status !== 'scheduled') return event;
 
@@ -353,17 +382,76 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             eventDateTime.setMinutes(eventDateTime.getMinutes() + event.duration);
 
             if (eventDateTime < now) {
+                completedEventIds.push(event.id);
                 return { ...event, status: 'completed' as const };
             }
             return event;
         });
 
-        // TODO: Session tracking will be reimplemented in the sessions tab refactor
-        // Members no longer track sessionsRemaining directly
+        if (completedEventIds.length === 0) return;
 
-        if (JSON.stringify(updatedEvents) !== JSON.stringify(data.events)) {
-            persistData({ ...data, events: updatedEvents });
-        }
+        // Get all member IDs from completed events
+        const affectedMemberIds = new Set<string>();
+        completedEventIds.forEach((eventId) => {
+            const event = data.events.find((e) => e.id === eventId);
+            if (!event) return;
+
+            if (event.type === 'person' && event.memberId) {
+                affectedMemberIds.add(event.memberId);
+            } else if (event.type === 'group' && event.groupId) {
+                const group = data.groups.find((g) => g.id === event.groupId);
+                if (group) {
+                    group.memberIds.forEach((memberId) => affectedMemberIds.add(memberId));
+                }
+            }
+        });
+
+        // Deduct sessions for affected members (once per member, not per event)
+        const updatedSessions = data.sessions.map((session) => {
+            if (affectedMemberIds.has(session.memberId) && session.remaining > 0) {
+                // Count how many events this member was in
+                const memberEventCount = completedEventIds.filter((eventId) => {
+                    const event = data.events.find((e) => e.id === eventId);
+                    if (!event) return false;
+                    if (event.type === 'person') return event.memberId === session.memberId;
+                    if (event.type === 'group' && event.groupId) {
+                        const group = data.groups.find((g) => g.id === event.groupId);
+                        return group?.memberIds.includes(session.memberId);
+                    }
+                    return false;
+                }).length;
+
+                return { 
+                    ...session, 
+                    remaining: Math.max(0, session.remaining - memberEventCount)
+                };
+            }
+            return session;
+        });
+
+        persistData({ ...data, events: updatedEvents, sessions: updatedSessions });
+    }, [data, persistData]);
+
+    const addSession = useCallback((session: Omit<Session, 'id' | 'createdAt'>) => {
+        const newSession: Session = {
+            id: generateId(),
+            memberId: session.memberId,
+            total: session.total,
+            remaining: session.remaining,
+            createdAt: new Date().toISOString(),
+        };
+        persistData({ ...data, sessions: [...data.sessions, newSession] });
+    }, [data, persistData]);
+
+    const updateSession = useCallback((id: string, updates: Partial<Session>) => {
+        persistData({
+            ...data,
+            sessions: data.sessions.map((s) => (s.id === id ? { ...s, ...updates } : s)),
+        });
+    }, [data, persistData]);
+
+    const deleteSession = useCallback((id: string) => {
+        persistData({ ...data, sessions: data.sessions.filter((s) => s.id !== id) });
     }, [data, persistData]);
 
     return (
@@ -389,6 +477,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 createGroupEvent,
                 createGroupSeries,
                 processCompletedEvents,
+                addSession,
+                updateSession,
+                deleteSession,
             }}
         >
             {children}

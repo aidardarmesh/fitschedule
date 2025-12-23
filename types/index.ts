@@ -28,6 +28,14 @@ export interface GroupSession {
     sessionsTotal: number;
 }
 
+export interface Session {
+    id: string;
+    memberId: string;
+    total: number;
+    remaining: number;
+    createdAt: string;
+}
+
 export interface Series {
     id: string;
     type: 'person' | 'group';
@@ -58,4 +66,5 @@ export interface AppData {
     groups: GroupSession[];
     events: Event[];
     series: Series[];
+    sessions: Session[];
 }

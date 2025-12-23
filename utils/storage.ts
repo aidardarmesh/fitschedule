@@ -16,6 +16,7 @@ const defaultData: AppData = {
     groups: [],
     events: [],
     series: [],
+    sessions: [],
 };
 
 export async function loadAppData(): Promise<AppData> {

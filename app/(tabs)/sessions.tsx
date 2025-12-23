@@ -1,17 +1,34 @@
+import SessionModal from '@/components/SessionModal';
 import { useApp } from '@/context/AppContext';
-import { Member } from '@/types';
+import { Session } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState } from 'react';
 import { Alert, FlatList, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+interface SessionWithMember extends Session {
+    memberName: string;
+    memberWhatsapp: string;
+}
+
 export default function SessionsScreen() {
     const { data } = useApp();
+    const [modalVisible, setModalVisible] = useState(false);
+    const [selectedSession, setSelectedSession] = useState<Session | undefined>(undefined);
 
-    // Sort members by sessions remaining (least to most)
-    const sortedMembers = [...data.members].sort(
-        (a, b) => a.sessionsRemaining - b.sessionsRemaining
-    );
+    // Join sessions with member data
+    const sessionsWithMembers: SessionWithMember[] = data.sessions
+        .map((session) => {
+            const member = data.members.find((m) => m.id === session.memberId);
+            if (!member) return null;
+            return {
+                ...session,
+                memberName: member.name,
+                memberWhatsapp: member.whatsapp,
+            };
+        })
+        .filter((s): s is SessionWithMember => s !== null)
+        .sort((a, b) => a.remaining - b.remaining); // Sort by remaining (ascending)
 
     const openWhatsApp = (phone: string) => {
         const url = `whatsapp://send?phone=${phone.replace(/\D/g, '')}`;
@@ -26,42 +43,50 @@ export default function SessionsScreen() {
         return '#22c55e';
     };
 
-    const renderMember = ({ item }: { item: Member }) => (
+    const handleAdd = () => {
+        setSelectedSession(undefined);
+        setModalVisible(true);
+    };
+
+    const handleEdit = (session: Session) => {
+        setSelectedSession(session);
+        setModalVisible(true);
+    };
+
+    const renderSession = ({ item }: { item: SessionWithMember }) => (
         <View style={styles.card}>
             <View style={styles.leftSection}>
                 <View
                     style={[
                         styles.indicator,
-                        { backgroundColor: getStatusColor(item.sessionsRemaining) },
+                        { backgroundColor: getStatusColor(item.remaining) },
                     ]}
                 />
                 <View style={styles.info}>
-                    <Text style={styles.name}>{item.name}</Text>
+                    <Text style={styles.name}>{item.memberName}</Text>
                     <Text
                         style={[
                             styles.sessions,
-                            item.sessionsRemaining <= 0 && styles.negative,
+                            item.remaining <= 0 && styles.negative,
                         ]}
                     >
-                        {item.sessionsRemaining} / {item.sessionsTotal} sessions
+                        {item.remaining} / {item.total} sessions
                     </Text>
                 </View>
             </View>
 
             <View style={styles.memberActions}>
-                {item.whatsapp && (
+                {item.memberWhatsapp && (
                     <TouchableOpacity
                         style={styles.whatsappBtn}
-                        onPress={() => openWhatsApp(item.whatsapp)}
+                        onPress={() => openWhatsApp(item.memberWhatsapp)}
                     >
                         <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
                     </TouchableOpacity>
                 )}
                 <TouchableOpacity
                     style={styles.actionBtn}
-                    onPress={() => {
-                        // TODO: Add edit functionality
-                    }}
+                    onPress={() => handleEdit(item)}
                 >
                     <Ionicons name="create-outline" size={20} color="#4f46e5" />
                 </TouchableOpacity>
@@ -72,25 +97,35 @@ export default function SessionsScreen() {
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <View style={styles.header}>
-                <Text style={styles.title}>Sessions Left</Text>
+                <Text style={styles.title}>Sessions</Text>
                 <TouchableOpacity
                     style={styles.addButton}
-                    onPress={() => {
-                        // TODO: Add functionality
-                    }}
+                    onPress={handleAdd}
                 >
                     <Ionicons name="add" size={24} color="#fff" />
                 </TouchableOpacity>
             </View>
 
             <FlatList
-                data={sortedMembers}
+                data={sessionsWithMembers}
                 keyExtractor={(item) => item.id}
-                renderItem={renderMember}
+                renderItem={renderSession}
                 contentContainerStyle={styles.list}
                 ListEmptyComponent={
-                    <Text style={styles.emptyText}>No members yet.</Text>
+                    <View style={styles.emptyContainer}>
+                        <Ionicons name="fitness-outline" size={64} color="#333" />
+                        <Text style={styles.emptyText}>No sessions yet</Text>
+                        <Text style={styles.emptySubtext}>
+                            Tap the + button to add a session
+                        </Text>
+                    </View>
                 }
+            />
+
+            <SessionModal
+                visible={modalVisible}
+                onClose={() => setModalVisible(false)}
+                session={selectedSession}
             />
         </SafeAreaView>
     );
@@ -180,9 +215,20 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    emptyContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+    },
     emptyText: {
         color: '#666',
-        textAlign: 'center',
-        marginTop: 60,
+        fontSize: 18,
+        fontWeight: '600',
+        marginTop: 16,
+    },
+    emptySubtext: {
+        color: '#444',
+        fontSize: 14,
+        marginTop: 8,
     },
 });
