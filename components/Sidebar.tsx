@@ -71,7 +71,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     ];
 
     const handleFeedback = () => {
-        Linking.openURL('mailto:feedback@fitschedule.app?subject=FitSchedule Feedback');
+        Linking.openURL('https://forms.gle/PrefXnsavdF4QBKC8');
     };
 
     return (
