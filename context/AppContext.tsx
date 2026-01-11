@@ -12,6 +12,9 @@ interface AppContextType {
     // Settings
     updateSettings: (settings: Partial<AppSettings>) => void;
 
+    // Reset all data
+    resetAllData: () => void;
+
     // Members
     addMember: (member: Omit<Member, 'id' | 'createdAt'>) => void;
     addMembers: (members: Omit<Member, 'id' | 'createdAt'>[]) => void;
@@ -129,16 +132,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const deleteMember = useCallback((id: string) => {
         // Remove the member
         const updatedMembers = data.members.filter((m) => m.id !== id);
-        
+
         // Remove all events associated with this member
         const updatedEvents = data.events.filter((e) => e.memberId !== id);
-        
+
         // Remove all series associated with this member
         const updatedSeries = data.series.filter((s) => s.memberId !== id);
-        
+
         // Remove all sessions associated with this member
         const updatedSessions = data.sessions.filter((s) => s.memberId !== id);
-        
+
         // Remove member from all groups and clean up orphaned groups
         const updatedGroups = data.groups
             .map((g) => ({
@@ -146,18 +149,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 memberIds: g.memberIds.filter((memberId) => memberId !== id),
             }))
             .filter((g) => g.memberIds.length > 0); // Remove groups with no members
-        
+
         // Remove events for orphaned groups (groups that were deleted)
         const remainingGroupIds = new Set(updatedGroups.map((g) => g.id));
-        const finalEvents = updatedEvents.filter((e) => 
+        const finalEvents = updatedEvents.filter((e) =>
             !e.groupId || remainingGroupIds.has(e.groupId)
         );
-        
+
         // Remove series for orphaned groups
-        const finalSeries = updatedSeries.filter((s) => 
+        const finalSeries = updatedSeries.filter((s) =>
             !s.groupId || remainingGroupIds.has(s.groupId)
         );
-        
+
         persistData({
             ...data,
             members: updatedMembers,
@@ -222,7 +225,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
             return session;
         });
-        
+
         persistData({
             ...data,
             events: data.events.map((e) => (e.id === id ? { ...e, status: 'completed' } : e)),
@@ -374,7 +377,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const processCompletedEvents = useCallback(() => {
         const now = new Date();
         const completedEventIds: string[] = [];
-        
+
         const updatedEvents = data.events.map((event) => {
             if (event.status !== 'scheduled') return event;
 
@@ -421,8 +424,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     return false;
                 }).length;
 
-                return { 
-                    ...session, 
+                return {
+                    ...session,
                     remaining: Math.max(0, session.remaining - memberEventCount)
                 };
             }
@@ -454,6 +457,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         persistData({ ...data, sessions: data.sessions.filter((s) => s.id !== id) });
     }, [data, persistData]);
 
+    const resetAllData = useCallback(() => {
+        const resetData: AppData = {
+            profile: { name: '', onboardingComplete: false },
+            settings: { calendarViewType: 'day' },
+            members: [],
+            groups: [],
+            events: [],
+            series: [],
+            sessions: [],
+        };
+        persistData(resetData);
+    }, [persistData]);
+
     return (
         <AppContext.Provider
             value={{
@@ -480,6 +496,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 addSession,
                 updateSession,
                 deleteSession,
+                resetAllData,
             }}
         >
             {children}

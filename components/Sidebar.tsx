@@ -1,6 +1,6 @@
 import { useApp } from '@/context/AppContext';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, Linking, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -15,12 +15,13 @@ const SIDEBAR_WIDTH = 280;
 const ANIMATION_DURATION = 300;
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
-    const { data, updateSettings } = useApp();
+    const { data, updateSettings, resetAllData } = useApp();
     const { calendarViewType } = data.settings;
     const insets = useSafeAreaInsets();
 
     const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
     const overlayAnim = useRef(new Animated.Value(0)).current;
+    const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -72,6 +73,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     const handleFeedback = () => {
         Linking.openURL('https://forms.gle/PrefXnsavdF4QBKC8');
+    };
+
+    const handleDeleteAccount = () => {
+        // Reset all app data atomically (profile, members, events, sessions, etc.)
+        resetAllData();
+
+        // Close the sidebar and confirmation dialog
+        setShowDeleteConfirmation(false);
+        onClose();
     };
 
     return (
@@ -143,6 +153,56 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             <Text style={styles.optionText}>Send Feedback</Text>
                         </TouchableOpacity>
                     </View>
+
+                    <View style={styles.section}>
+                        <TouchableOpacity
+                            style={styles.dangerOptionRow}
+                            onPress={() => setShowDeleteConfirmation(true)}
+                        >
+                            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                            <Text style={styles.dangerOptionText}>Delete Account</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Delete Confirmation Modal */}
+                    <Modal
+                        visible={showDeleteConfirmation}
+                        transparent
+                        animationType="fade"
+                        onRequestClose={() => setShowDeleteConfirmation(false)}
+                    >
+                        <View style={styles.confirmationOverlay}>
+                            <View style={styles.confirmationDialog}>
+                                <Ionicons name="warning" size={48} color="#ef4444" style={styles.warningIcon} />
+                                <Text style={styles.confirmationTitle}>Delete Account?</Text>
+                                <Text style={styles.confirmationMessage}>
+                                    This will permanently delete all your data including:
+                                </Text>
+                                <View style={styles.dataList}>
+                                    <Text style={styles.dataListItem}>• Profile (name and avatar)</Text>
+                                    <Text style={styles.dataListItem}>• All contacts</Text>
+                                    <Text style={styles.dataListItem}>• All events and sessions</Text>
+                                </View>
+                                <Text style={styles.confirmationWarning}>
+                                    This action cannot be undone.
+                                </Text>
+                                <View style={styles.confirmationButtons}>
+                                    <TouchableOpacity
+                                        style={styles.cancelButton}
+                                        onPress={() => setShowDeleteConfirmation(false)}
+                                    >
+                                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.deleteButton}
+                                        onPress={handleDeleteAccount}
+                                    >
+                                        <Text style={styles.deleteButtonText}>Delete</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </View>
+                    </Modal>
 
                     <View style={styles.footer}>
                         <Text style={styles.footerText}>Version {APP_VERSION}</Text>
@@ -258,5 +318,101 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#555',
         marginBottom: 4,
+    },
+    dangerOptionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        gap: 12,
+    },
+    dangerOptionText: {
+        flex: 1,
+        fontSize: 16,
+        color: '#ef4444',
+        fontWeight: '500',
+    },
+    confirmationOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    confirmationDialog: {
+        backgroundColor: '#1a1a1a',
+        borderRadius: 16,
+        padding: 24,
+        width: '100%',
+        maxWidth: 400,
+        borderWidth: 1,
+        borderColor: '#333',
+    },
+    warningIcon: {
+        alignSelf: 'center',
+        marginBottom: 16,
+    },
+    confirmationTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#fff',
+        textAlign: 'center',
+        marginBottom: 12,
+    },
+    confirmationMessage: {
+        fontSize: 16,
+        color: '#ccc',
+        textAlign: 'center',
+        marginBottom: 16,
+        lineHeight: 22,
+    },
+    dataList: {
+        backgroundColor: '#0a0a0a',
+        borderRadius: 8,
+        padding: 16,
+        marginBottom: 16,
+    },
+    dataListItem: {
+        fontSize: 14,
+        color: '#aaa',
+        marginBottom: 8,
+        lineHeight: 20,
+    },
+    confirmationWarning: {
+        fontSize: 14,
+        color: '#ef4444',
+        textAlign: 'center',
+        fontWeight: '600',
+        marginBottom: 24,
+    },
+    confirmationButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    cancelButton: {
+        flex: 1,
+        height: 48,
+        backgroundColor: '#333',
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    cancelButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    deleteButton: {
+        flex: 1,
+        height: 48,
+        backgroundColor: '#ef4444',
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    deleteButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
