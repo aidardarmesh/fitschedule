@@ -13,7 +13,8 @@
       "bundleIdentifier": "com.adarmesh.expoproject",
       "icon": "./assets/icon.icon",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSContactsUsageDescription": "Importing contacts will automatically onboard members into your schedule."
       }
     },
     "android": {
