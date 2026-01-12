@@ -77,6 +77,10 @@ export default function OnboardingScreen() {
                 >
                     <Text style={styles.buttonText}>Get Started</Text>
                 </TouchableOpacity>
+
+                <Text style={styles.footerText}>
+                    <Ionicons name="shield-checkmark-outline" size={14} color="#666" /> All application data is saved only on this device
+                </Text>
             </View>
         </KeyboardAvoidingView>
     );
@@ -153,5 +157,11 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
+    },
+    footerText: {
+        fontSize: 12,
+        color: '#666',
+        marginTop: 24,
+        textAlign: 'center',
     },
 });
